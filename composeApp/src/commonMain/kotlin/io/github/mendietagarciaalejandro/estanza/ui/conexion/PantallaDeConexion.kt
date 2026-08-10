@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +17,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,6 +42,7 @@ fun PantallaDeConexion(
     alEscribir: (String) -> Unit,
     alGuardar: () -> Unit,
     alRestablecer: () -> Unit,
+    alProbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
@@ -110,6 +115,40 @@ fun PantallaDeConexion(
                         enabled = estado.urlGuardada != estado.urlPorDefecto,
                     ) {
                         Text("Usar la de esta plataforma")
+                    }
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = alProbar,
+                        // Probar el borrador sin guardar engaña: se comprueba lo que hay
+                        // guardado, que es lo que usaran las demas pantallas.
+                        enabled = !estado.comprobando && !estado.hayCambios,
+                    ) {
+                        Text("Probar conexion")
+                    }
+
+                    when {
+                        estado.comprobando -> CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+
+                        estado.prueba is ResultadoDeLaPrueba.Responde -> Text(
+                            "El servidor responde.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+
+                        estado.prueba is ResultadoDeLaPrueba.NoResponde -> Text(
+                            estado.prueba.motivo,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
             }

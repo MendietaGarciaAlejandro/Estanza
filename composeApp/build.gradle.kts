@@ -47,18 +47,31 @@ kotlin {
 
             implementation(libs.multiplatform.settings)
             implementation(libs.kotlinx.coroutines.core)
+
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
+
+            // La libreria propia, publicada en Maven Central. Es la razon de haberla
+            // escrito: aqui se usa igual desde Android, escritorio y navegador.
+            implementation(libs.validadores.es)
         }
 
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.multiplatform.settings.test)
+            implementation(libs.ktor.client.mock)
         }
 
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
+            implementation(libs.ktor.client.okhttp)
         }
 
         jvmMain.dependencies {
@@ -66,6 +79,11 @@ kotlin {
             // Compose de escritorio corre sobre Swing, asi que el dispatcher principal
             // tiene que ser el hilo de eventos de AWT.
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.ktor.client.cio)
+        }
+
+        wasmJsMain.dependencies {
+            implementation(libs.ktor.client.js)
         }
     }
 }

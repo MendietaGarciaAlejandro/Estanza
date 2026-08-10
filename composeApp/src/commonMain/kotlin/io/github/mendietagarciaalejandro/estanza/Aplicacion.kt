@@ -24,6 +24,7 @@ fun Aplicacion() {
             alEscribir = modelo::escribir,
             alGuardar = modelo::guardar,
             alRestablecer = modelo::restablecer,
+            alProbar = modelo::probar,
         )
     }
 }
