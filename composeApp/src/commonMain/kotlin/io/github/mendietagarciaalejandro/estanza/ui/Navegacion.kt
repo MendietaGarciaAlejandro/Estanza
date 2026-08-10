@@ -2,22 +2,29 @@ package io.github.mendietagarciaalejandro.estanza.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import io.github.mendietagarciaalejandro.estanza.datos.CampoDeAlta
+import io.github.mendietagarciaalejandro.estanza.datos.CatalogoDeRecursos
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
-import io.github.mendietagarciaalejandro.estanza.sesion.Sesion
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.ModeloDeAcceso
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.PantallaDeAcceso
 import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.alta.PantallaDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
 import io.github.mendietagarciaalejandro.estanza.ui.conexion.PantallaDeConexion
-import io.github.mendietagarciaalejandro.estanza.ui.inicio.PantallaDeInicio
+import io.github.mendietagarciaalejandro.estanza.ui.catalogo.ModeloDeCatalogo
+import io.github.mendietagarciaalejandro.estanza.ui.catalogo.PantallaDeCatalogo
+import io.github.mendietagarciaalejandro.estanza.ui.recurso.ModeloDeRecurso
+import io.github.mendietagarciaalejandro.estanza.ui.recurso.PantallaDeRecurso
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 /**
  * Reparte la aplicacion en dos grafos segun haya sesion o no.
@@ -31,11 +38,23 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun Navegacion() {
     val sesiones: AlmacenDeSesion = koinInject()
+    val catalogo: CatalogoDeRecursos = koinInject()
     val sesion by sesiones.sesion.collectAsStateWithLifecycle()
 
-    when (val abierta = sesion) {
-        null -> GrafoDeFuera()
-        else -> GrafoDeDentro(sesion = abierta, alSalir = sesiones::cerrar)
+    // El alcance vive aqui y no dentro del grafo: al cerrar sesion el grafo desaparece de
+    // la composicion, y con el se llevaria por delante la corrutina que vacia el catalogo.
+    val alcance = rememberCoroutineScope()
+
+    if (sesion == null) {
+        GrafoDeFuera()
+    } else {
+        GrafoDeDentro(
+            alSalir = {
+                // Que el siguiente que entre no se encuentre el catalogo del anterior.
+                alcance.launch { catalogo.olvidar() }
+                sesiones.cerrar()
+            }
+        )
     }
 }
 
@@ -84,15 +103,38 @@ private fun GrafoDeFuera() {
 }
 
 @Composable
-private fun GrafoDeDentro(sesion: Sesion, alSalir: () -> Unit) {
+private fun GrafoDeDentro(alSalir: () -> Unit) {
     val navegador = rememberNavController()
 
-    NavHost(navController = navegador, startDestination = Rutas.Inicio) {
-        composable<Rutas.Inicio> {
-            PantallaDeInicio(
-                sesion = sesion,
+    NavHost(navController = navegador, startDestination = Rutas.Catalogo) {
+        composable<Rutas.Catalogo> {
+            val modelo = koinViewModel<ModeloDeCatalogo>()
+            val estado by modelo.estado.collectAsStateWithLifecycle()
+
+            PantallaDeCatalogo(
+                estado = estado,
+                alFiltrar = modelo::filtrarPor,
+                alAbrirRecurso = { navegador.navigate(Rutas.Recurso(it.id)) },
+                alReintentar = { modelo.cargar(refrescar = true) },
                 alIrAAjustes = { navegador.navigate(Rutas.Ajustes) },
                 alSalir = alSalir,
+            )
+        }
+
+        composable<Rutas.Recurso> { entrada ->
+            val ruta = entrada.toRoute<Rutas.Recurso>()
+
+            // La clave hace que al abrir otro recurso se cree un modelo nuevo en vez de
+            // reutilizar el del anterior con su fecha y sus huecos.
+            val modelo = koinViewModel<ModeloDeRecurso>(key = ruta.id) { parametersOf(ruta.id) }
+            val estado by modelo.estado.collectAsStateWithLifecycle()
+
+            PantallaDeRecurso(
+                estado = estado,
+                alDiaAnterior = modelo::diaAnterior,
+                alDiaSiguiente = modelo::diaSiguiente,
+                alReintentar = modelo::reintentar,
+                alVolver = navegador::popBackStack,
             )
         }
 

@@ -1,16 +1,20 @@
 package io.github.mendietagarciaalejandro.estanza.di
 
 import io.github.mendietagarciaalejandro.estanza.datos.AjustesDeConexion
+import io.github.mendietagarciaalejandro.estanza.datos.CatalogoDeRecursos
 import io.github.mendietagarciaalejandro.estanza.plataforma.moduloDePlataforma
 import io.github.mendietagarciaalejandro.estanza.red.ApiDeCamar
 import io.github.mendietagarciaalejandro.estanza.red.crearClienteHttp
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.ModeloDeAcceso
 import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
+import io.github.mendietagarciaalejandro.estanza.ui.catalogo.ModeloDeCatalogo
 import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
+import io.github.mendietagarciaalejandro.estanza.ui.recurso.ModeloDeRecurso
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 import kotlin.time.Clock
@@ -33,10 +37,15 @@ val moduloComun = module {
     singleOf(::AjustesDeConexion)
     singleOf(::AlmacenDeSesion)
     singleOf(::ApiDeCamar)
+    singleOf(::CatalogoDeRecursos)
 
     viewModelOf(::ModeloDeConexion)
     viewModelOf(::ModeloDeAcceso)
     viewModelOf(::ModeloDeAlta)
+    viewModelOf(::ModeloDeCatalogo)
+
+    // Este necesita el id del recurso, que solo se sabe al navegar.
+    viewModel { parametros -> ModeloDeRecurso(parametros.get(), get(), get(), get()) }
 }
 
 /**

@@ -1,6 +1,7 @@
 package io.github.mendietagarciaalejandro.estanza.red
 
 import io.github.mendietagarciaalejandro.estanza.datos.AjustesDeConexion
+import io.github.mendietagarciaalejandro.estanza.datos.comoParametro
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
 import io.github.mendietagarciaalejandro.estanza.sesion.Sesion
 import io.ktor.client.HttpClient
@@ -8,6 +9,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -15,6 +17,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 
 /**
@@ -40,6 +43,20 @@ class ApiDeCamar(
 
     suspend fun recursos(): Respuesta<List<RecursoDto>> =
         pedir { get(url("/api/resources")) { autenticar() } }
+
+    /**
+     * Huecos de media hora libres de un recurso en una fecha.
+     *
+     * La fecha va como parametro con el formato que espera un DateOnly de .NET; si se manda
+     * otra cosa Camar contesta 400 con el campo "date" en los errores.
+     */
+    suspend fun disponibilidad(idRecurso: String, fecha: LocalDate): Respuesta<DisponibilidadDto> =
+        pedir {
+            get(url("/api/resources/$idRecurso/availability")) {
+                parameter("date", fecha.comoParametro())
+                autenticar()
+            }
+        }
 
     /**
      * Comprueba si al otro lado de la direccion configurada hay un Camar.

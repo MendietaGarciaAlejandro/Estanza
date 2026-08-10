@@ -53,3 +53,18 @@ data class RecursoDto(
     @SerialName("type") val tipo: String,
     @SerialName("capacity") val capacidad: Int,
 )
+
+@Serializable
+data class HuecoDto(
+    @SerialName("start") val inicio: String,
+    @SerialName("end") val fin: String,
+)
+
+@Serializable
+data class DisponibilidadDto(
+    @SerialName("resourceId") val idRecurso: String,
+    @SerialName("date") val fecha: String,
+    // Vacio cuando el coworking cierra ese dia o cuando no queda un solo hueco: desde
+    // fuera no se distingue, Camar contesta lo mismo en los dos casos.
+    @SerialName("freeSlots") val huecosLibres: List<HuecoDto>,
+)

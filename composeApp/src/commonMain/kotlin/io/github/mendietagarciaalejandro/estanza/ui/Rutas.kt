@@ -17,7 +17,11 @@ object Rutas {
     data object Alta
 
     @Serializable
-    data object Inicio
+    data object Catalogo
+
+    /** La ficha de un recurso lleva su id; el resto se saca del catalogo ya cargado. */
+    @Serializable
+    data class Recurso(val id: String)
 
     @Serializable
     data object Ajustes
