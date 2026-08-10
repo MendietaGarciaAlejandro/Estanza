@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Solo lo justo para la ventana que se ve antes de que arranque Compose: el tema de
+         verdad esta en Kotlin y es el mismo en las tres plataformas. -->
+    <style name="Theme.Estanza" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fondo</item>
+    </style>
+</resources>
