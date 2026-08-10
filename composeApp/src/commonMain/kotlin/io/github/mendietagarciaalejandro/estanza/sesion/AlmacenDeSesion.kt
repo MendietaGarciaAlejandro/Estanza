@@ -39,22 +39,38 @@ class AlmacenDeSesion(
     fun cerrar() {
         // Camar no tiene lista negra de tokens: cerrar sesion es olvidarlo por aqui y
         // esperar a que caduque solo. Con tokens de una hora y sin refresh es suficiente.
-        listOf(TOKEN, CADUCA, USUARIO, ROL).forEach(almacen::remove)
+        olvidar()
 
         flujo.value = null
     }
 
+    /**
+     * Lo guardado, o null si ya no sirve.
+     *
+     * Un token caducado se borra aqui mismo en vez de dejarlo estar: asi el resto de la
+     * aplicacion solo tiene que mirar si hay sesion o no, sin preguntarse ademas si la que
+     * hay vale. Si caduca con la aplicacion abierta lo cazara el primer 401.
+     */
     private fun leerDelAlmacen(): Sesion? {
         val token = almacen.getStringOrNull(TOKEN) ?: return null
         val caduca = almacen.getLongOrNull(CADUCA) ?: return null
 
-        return Sesion(
+        val guardada = Sesion(
             token = token,
             caducaEn = Instant.fromEpochMilliseconds(caduca),
             idUsuario = almacen.getStringOrNull(USUARIO).orEmpty(),
             rol = almacen.getStringOrNull(ROL).orEmpty(),
         )
+
+        if (!guardada.vigenteEn(reloj.now())) {
+            olvidar()
+            return null
+        }
+
+        return guardada
     }
+
+    private fun olvidar() = listOf(TOKEN, CADUCA, USUARIO, ROL).forEach(almacen::remove)
 
     private companion object {
         const val TOKEN = "sesion_token"

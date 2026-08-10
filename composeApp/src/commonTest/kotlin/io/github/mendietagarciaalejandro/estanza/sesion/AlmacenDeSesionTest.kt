@@ -43,6 +43,20 @@ class AlmacenDeSesionTest {
     }
 
     @Test
+    fun alArrancar_unTokenYaCaducadoNiSeCarga() {
+        val preferencias = MapSettings()
+        AlmacenDeSesion(preferencias, RelojFijo(AHORA)).abrir(sesion(AHORA + 1.hours))
+
+        // Vuelves a abrir la aplicacion al dia siguiente.
+        val alDiaSiguiente = AlmacenDeSesion(preferencias, RelojFijo(AHORA + 24.hours))
+
+        // Se descarta al leerlo, para que el resto de la aplicacion solo tenga que mirar si
+        // hay sesion y no ademas si la que hay sirve.
+        assertNull(alDiaSiguiente.sesion.value)
+        assertNull(preferencias.getStringOrNull("sesion_token"))
+    }
+
+    @Test
     fun cerrar_borraElToken() {
         val preferencias = MapSettings()
         val almacen = AlmacenDeSesion(preferencias, RelojFijo(AHORA))

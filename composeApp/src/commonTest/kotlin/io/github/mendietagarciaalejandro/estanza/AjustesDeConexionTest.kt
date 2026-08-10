@@ -2,18 +2,12 @@ package io.github.mendietagarciaalejandro.estanza
 
 import com.russhwolf.settings.MapSettings
 import io.github.mendietagarciaalejandro.estanza.datos.AjustesDeConexion
-import io.github.mendietagarciaalejandro.estanza.plataforma.Plataforma
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
-private object PlataformaDePrueba : Plataforma {
-    override val nombre = "test"
-    override val urlBasePorDefecto = "http://localhost:5106"
-}
 
 /**
  * Estos tests corren en los tres targets. Es la ventaja de tener la logica en commonMain:

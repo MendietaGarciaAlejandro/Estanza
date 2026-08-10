@@ -5,6 +5,8 @@ import io.github.mendietagarciaalejandro.estanza.plataforma.moduloDePlataforma
 import io.github.mendietagarciaalejandro.estanza.red.ApiDeCamar
 import io.github.mendietagarciaalejandro.estanza.red.crearClienteHttp
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
+import io.github.mendietagarciaalejandro.estanza.ui.acceso.ModeloDeAcceso
+import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
@@ -33,6 +35,8 @@ val moduloComun = module {
     singleOf(::ApiDeCamar)
 
     viewModelOf(::ModeloDeConexion)
+    viewModelOf(::ModeloDeAcceso)
+    viewModelOf(::ModeloDeAlta)
 }
 
 /**

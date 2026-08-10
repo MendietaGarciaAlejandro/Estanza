@@ -43,6 +43,7 @@ fun PantallaDeConexion(
     alGuardar: () -> Unit,
     alRestablecer: () -> Unit,
     alProbar: () -> Unit,
+    alVolver: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
@@ -150,6 +151,10 @@ fun PantallaDeConexion(
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
+                }
+
+                TextButton(onClick = alVolver) {
+                    Text("Volver")
                 }
             }
         }

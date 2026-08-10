@@ -128,7 +128,14 @@ class ApiDeCamar(
                 ?.let(ErrorDeApi::DatosInvalidos)
                 ?: ErrorDeApi.DelServidor(400, detalle ?: "La peticion no es valida.")
 
-            401 -> ErrorDeApi.NoAutorizado(detalle ?: "Tienes que iniciar sesion.")
+            401 -> {
+                // Si habia sesion guardada y el servidor la rechaza, ya no sirve para nada:
+                // se tira aqui para que la aplicacion vuelva sola a la pantalla de acceso en
+                // vez de dejar al usuario dentro viendo pantallas que fallan una tras otra.
+                if (sesiones.sesion.value != null) sesiones.cerrar()
+
+                ErrorDeApi.NoAutorizado(detalle ?: "Tienes que iniciar sesion.")
+            }
             403 -> ErrorDeApi.Prohibido(detalle ?: "No tienes permiso para hacer esto.")
             404 -> ErrorDeApi.NoEncontrado(detalle ?: "Eso ya no esta.")
             409 -> ErrorDeApi.Conflicto(detalle ?: "Alguien se ha adelantado.")
