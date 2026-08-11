@@ -231,7 +231,7 @@ class ReservarTest {
             when {
                 peticion.esCreacionDeReserva() -> problema(
                     HttpStatusCode.UnprocessableEntity,
-                    "Una reserva de HotDesk dura entre 240 y 780 minutos.",
+                    "Una reserva de mesa flexible dura entre 4 y 13 horas.",
                 )
                 peticion.url.encodedPath.endsWith("/availability") ->
                     json("""{"resourceId":"1","date":"2026-01-12","freeSlots":[$huecosConHueco]}""")
@@ -248,7 +248,7 @@ class ReservarTest {
 
         // Las duraciones minimas son politica del servidor: no se repiten aqui, se enseña
         // lo que conteste.
-        assertEquals("Una reserva de HotDesk dura entre 240 y 780 minutos.", estado.errorDeReserva)
+        assertEquals("Una reserva de mesa flexible dura entre 4 y 13 horas.", estado.errorDeReserva)
     }
 
     // --- mis reservas ---
