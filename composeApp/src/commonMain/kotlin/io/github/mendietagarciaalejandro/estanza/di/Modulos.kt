@@ -11,6 +11,7 @@ import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.catalogo.ModeloDeCatalogo
 import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
 import io.github.mendietagarciaalejandro.estanza.ui.recurso.ModeloDeRecurso
+import io.github.mendietagarciaalejandro.estanza.ui.reservas.ModeloDeReservas
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -43,6 +44,7 @@ val moduloComun = module {
     viewModelOf(::ModeloDeAcceso)
     viewModelOf(::ModeloDeAlta)
     viewModelOf(::ModeloDeCatalogo)
+    viewModelOf(::ModeloDeReservas)
 
     // Este necesita el id del recurso, que solo se sabe al navegar.
     viewModel { parametros -> ModeloDeRecurso(parametros.get(), get(), get(), get()) }

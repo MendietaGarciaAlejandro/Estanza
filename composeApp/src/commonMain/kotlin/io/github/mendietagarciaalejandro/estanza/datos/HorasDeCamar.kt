@@ -27,6 +27,9 @@ fun Instant.comoHora(): String {
     return "${hora.hour.aDosCifras()}:${hora.minute.aDosCifras()}"
 }
 
+/** El dia al que pertenece un instante segun el calendario del coworking. */
+fun Instant.fechaDeCamar(): LocalDate = toLocalDateTime(ZonaDeLasHorasDeCamar).date
+
 /**
  * El dia de hoy segun el calendario de quien usa la aplicacion, no segun UTC: si son las
  * doce y media de la noche en Madrid, para el usuario ya es manana.

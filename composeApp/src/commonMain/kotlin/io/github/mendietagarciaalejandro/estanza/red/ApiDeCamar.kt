@@ -73,6 +73,26 @@ class ApiDeCamar(
         }
     }
 
+    /**
+     * Crea la reserva. Los 409 y los 422 que devuelve aqui son la parte interesante: el
+     * primero es que alguien se ha adelantado, el segundo que la reserva no cumple alguna
+     * norma del coworking (duracion, horario, antelacion del plan).
+     */
+    suspend fun crearReserva(idRecurso: String, inicio: Instant, fin: Instant): Respuesta<ReservaDto> =
+        pedir {
+            post(url("/api/reservations")) {
+                autenticar()
+                cuerpo(PeticionDeReserva(idRecurso, inicio.toString(), fin.toString()))
+            }
+        }
+
+    suspend fun misReservas(): Respuesta<List<ReservaDto>> =
+        pedir { get(url("/api/reservations")) { autenticar() } }
+
+    /** Devuelve la reserva ya cancelada, con el reembolso que le corresponda. */
+    suspend fun cancelarReserva(id: String): Respuesta<ReservaDto> =
+        pedir { post(url("/api/reservations/$id/cancel")) { autenticar() } }
+
     private fun url(ruta: String) = ajustes.urlBase.value + ruta
 
     private fun HttpRequestBuilder.cuerpo(valor: Any) {

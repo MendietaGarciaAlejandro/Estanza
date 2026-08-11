@@ -35,6 +35,7 @@ fun PantallaDeCatalogo(
     alFiltrar: (TipoDeRecurso?) -> Unit,
     alAbrirRecurso: (Recurso) -> Unit,
     alReintentar: () -> Unit,
+    alIrAMisReservas: () -> Unit,
     alIrAAjustes: () -> Unit,
     alSalir: () -> Unit,
     modifier: Modifier = Modifier,
@@ -45,6 +46,7 @@ fun PantallaDeCatalogo(
             TopAppBar(
                 title = { Text("Camar Coworking") },
                 actions = {
+                    TextButton(onClick = alIrAMisReservas) { Text("Mis reservas") }
                     TextButton(onClick = alIrAAjustes) { Text("Conexion") }
                     TextButton(onClick = alSalir) { Text("Salir") }
                 },

@@ -1,5 +1,6 @@
 package io.github.mendietagarciaalejandro.estanza.red
 
+import io.github.mendietagarciaalejandro.estanza.datos.Importe
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -52,6 +53,28 @@ data class RecursoDto(
     // MeetingRoom, HotDesk o PhoneBooth. Camar los serializa con ToString().
     @SerialName("type") val tipo: String,
     @SerialName("capacity") val capacidad: Int,
+)
+
+@Serializable
+data class PeticionDeReserva(
+    @SerialName("resourceId") val idRecurso: String,
+    // ISO-8601. Se manda con "Z", que .NET entiende como desfase cero, que es justo lo que
+    // Camar espera (ver la nota de zonas horarias).
+    @SerialName("start") val inicio: String,
+    @SerialName("end") val fin: String,
+)
+
+@Serializable
+data class ReservaDto(
+    @SerialName("id") val id: String,
+    @SerialName("resourceId") val idRecurso: String,
+    @SerialName("start") val inicio: String,
+    @SerialName("end") val fin: String,
+    // Confirmed, Cancelled, Completed o NoShow.
+    @SerialName("status") val estado: String,
+    @SerialName("price") val precio: Importe,
+    @SerialName("cancelledAt") val canceladaEn: String? = null,
+    @SerialName("refundAmount") val reembolso: Importe? = null,
 )
 
 @Serializable

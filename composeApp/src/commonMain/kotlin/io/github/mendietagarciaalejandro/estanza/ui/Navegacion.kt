@@ -21,6 +21,8 @@ import io.github.mendietagarciaalejandro.estanza.ui.catalogo.ModeloDeCatalogo
 import io.github.mendietagarciaalejandro.estanza.ui.catalogo.PantallaDeCatalogo
 import io.github.mendietagarciaalejandro.estanza.ui.recurso.ModeloDeRecurso
 import io.github.mendietagarciaalejandro.estanza.ui.recurso.PantallaDeRecurso
+import io.github.mendietagarciaalejandro.estanza.ui.reservas.ModeloDeReservas
+import io.github.mendietagarciaalejandro.estanza.ui.reservas.PantallaDeReservas
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -116,8 +118,23 @@ private fun GrafoDeDentro(alSalir: () -> Unit) {
                 alFiltrar = modelo::filtrarPor,
                 alAbrirRecurso = { navegador.navigate(Rutas.Recurso(it.id)) },
                 alReintentar = { modelo.cargar(refrescar = true) },
+                alIrAMisReservas = { navegador.navigate(Rutas.MisReservas) },
                 alIrAAjustes = { navegador.navigate(Rutas.Ajustes) },
                 alSalir = alSalir,
+            )
+        }
+
+        composable<Rutas.MisReservas> {
+            val modelo = koinViewModel<ModeloDeReservas>()
+            val estado by modelo.estado.collectAsStateWithLifecycle()
+
+            PantallaDeReservas(
+                estado = estado,
+                alPedirCancelar = modelo::preguntarSiCancelar,
+                alConfirmarCancelacion = modelo::confirmarCancelacion,
+                alDejarloEstar = modelo::dejarloEstar,
+                alReintentar = modelo::cargar,
+                alVolver = navegador::popBackStack,
             )
         }
 
@@ -133,6 +150,8 @@ private fun GrafoDeDentro(alSalir: () -> Unit) {
                 estado = estado,
                 alDiaAnterior = modelo::diaAnterior,
                 alDiaSiguiente = modelo::diaSiguiente,
+                alPulsarHueco = modelo::pulsarHueco,
+                alReservar = modelo::reservar,
                 alReintentar = modelo::reintentar,
                 alVolver = navegador::popBackStack,
             )

@@ -24,5 +24,8 @@ object Rutas {
     data class Recurso(val id: String)
 
     @Serializable
+    data object MisReservas
+
+    @Serializable
     data object Ajustes
 }

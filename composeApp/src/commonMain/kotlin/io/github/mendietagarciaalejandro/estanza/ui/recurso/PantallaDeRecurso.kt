@@ -12,10 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,6 +35,8 @@ fun PantallaDeRecurso(
     estado: EstadoDelRecurso,
     alDiaAnterior: () -> Unit,
     alDiaSiguiente: () -> Unit,
+    alPulsarHueco: (Int) -> Unit,
+    alReservar: () -> Unit,
     alReintentar: () -> Unit,
     alVolver: () -> Unit,
     modifier: Modifier = Modifier,
@@ -116,7 +119,7 @@ fun PantallaDeRecurso(
                     )
 
                     else -> {
-                        val huecos = estado.disponibilidad!!.huecos
+                        val huecos = estado.huecos
 
                         Text(
                             if (huecos.size == 1) "Queda 1 hueco de media hora"
@@ -124,21 +127,62 @@ fun PantallaDeRecurso(
                             style = MaterialTheme.typography.labelLarge,
                         )
 
+                        Text(
+                            "Toca un hueco y luego otro mas tarde para reservar un rato seguido.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            huecos.forEach { hueco ->
-                                // De momento solo se enseñan. Reservar llega en la fase
-                                // siguiente, y entonces esto pasa a ser pulsable.
-                                AssistChip(
-                                    onClick = {},
-                                    enabled = false,
+                            huecos.forEachIndexed { indice, hueco ->
+                                FilterChip(
+                                    selected = estado.seleccion?.contains(indice) == true,
+                                    onClick = { alPulsarHueco(indice) },
+                                    enabled = !estado.reservando,
                                     label = { Text(hueco.comoFranja()) },
                                 )
                             }
                         }
                     }
+                }
+
+                val resumen = estado.resumenDeLaSeleccion
+                if (resumen != null) {
+                    HorizontalDivider()
+
+                    Text("Vas a reservar $resumen.", style = MaterialTheme.typography.bodyMedium)
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Button(onClick = alReservar, enabled = !estado.reservando) {
+                            Text("Reservar")
+                        }
+
+                        if (estado.reservando) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                    }
+                }
+
+                // El texto sale de Camar sin tocarlo: "Ese hueco ya esta reservado.", "Una
+                // reserva de HotDesk dura entre 240 y 780 minutos.". Reescribirlo aqui
+                // seria copiarse sus reglas y arriesgarse a que dejen de coincidir.
+                if (estado.errorDeReserva != null) AvisoDeError(estado.errorDeReserva)
+
+                if (estado.reservaHecha != null) {
+                    Text(
+                        estado.reservaHecha,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
