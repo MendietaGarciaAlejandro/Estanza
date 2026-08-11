@@ -36,6 +36,8 @@ fun PantallaDeCatalogo(
     alAbrirRecurso: (Recurso) -> Unit,
     alReintentar: () -> Unit,
     alIrAMisReservas: () -> Unit,
+    /** null cuando la cuenta no es de administracion, y entonces el boton no se pinta. */
+    alIrAAdministracion: (() -> Unit)?,
     alIrAAjustes: () -> Unit,
     alSalir: () -> Unit,
     modifier: Modifier = Modifier,
@@ -47,6 +49,11 @@ fun PantallaDeCatalogo(
                 title = { Text("Camar Coworking") },
                 actions = {
                     TextButton(onClick = alIrAMisReservas) { Text("Mis reservas") }
+
+                    if (alIrAAdministracion != null) {
+                        TextButton(onClick = alIrAAdministracion) { Text("Admin") }
+                    }
+
                     TextButton(onClick = alIrAAjustes) { Text("Conexion") }
                     TextButton(onClick = alSalir) { Text("Salir") }
                 },

@@ -68,6 +68,8 @@ data class PeticionDeReserva(
 data class ReservaDto(
     @SerialName("id") val id: String,
     @SerialName("resourceId") val idRecurso: String,
+    // Solo se usa en administracion, para distinguir de quien es cada reserva.
+    @SerialName("userId") val idUsuario: String = "",
     @SerialName("start") val inicio: String,
     @SerialName("end") val fin: String,
     // Confirmed, Cancelled, Completed o NoShow.
@@ -75,6 +77,28 @@ data class ReservaDto(
     @SerialName("price") val precio: Importe,
     @SerialName("cancelledAt") val canceladaEn: String? = null,
     @SerialName("refundAmount") val reembolso: Importe? = null,
+)
+
+@Serializable
+data class PeticionDeRecurso(
+    @SerialName("name") val nombre: String,
+    // El enum viaja como su numero, que es como lo espera System.Text.Json sin convertidor.
+    @SerialName("type") val tipo: Int,
+    @SerialName("capacity") val capacidad: Int,
+)
+
+@Serializable
+data class PeticionDeDiaBloqueado(
+    // Un DateOnly de .NET: "2026-08-15", con los ceros puestos.
+    @SerialName("date") val fecha: String,
+    @SerialName("reason") val motivo: String,
+)
+
+@Serializable
+data class DiaBloqueadoDto(
+    @SerialName("id") val id: String,
+    @SerialName("date") val fecha: String,
+    @SerialName("reason") val motivo: String,
 )
 
 @Serializable

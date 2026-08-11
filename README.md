@@ -44,7 +44,12 @@ Los tests están en `commonTest`, así que valen para los tres targets. Los ejec
 ## Qué hace
 
 Darse de alta, entrar, ver el catálogo de recursos filtrado por tipo, mirar los huecos
-libres de cada día, reservar un rato y cancelarlo. Es el ciclo completo de la API.
+libres de cada día, reservar un rato y cancelarlo.
+
+Con una cuenta de administración aparece además una pantalla para cerrar días sueltos
+(festivos, obras), dar de alta y de baja recursos, y ver las reservas de todo el coworking.
+El botón solo se pinta si el rol del token lo es, pero eso es comodidad: quien guarda la
+puerta es Camar, que contesta 403 a cualquier otro.
 
 ## Decisiones que me parecen las importantes
 
@@ -182,9 +187,10 @@ Los tres están comentados donde tocan, porque son de los que se olvidan y se vu
 - **La lista de huecos vacía no distingue "cerrado" de "completo".** Camar contesta lo mismo
   en los dos casos y desde el cliente no hay forma de saberlo. Podría repetir el horario de
   apertura aquí para adivinarlo, pero prefiero decir lo que sé.
-- **No hay pantalla de administración.** Camar tiene endpoints para bloquear días y ver todas
-  las reservas, y no los usa nadie desde aquí.
-- **No hay tests de interfaz.** Los 74 tests cubren los modelos de pantalla, el cliente HTTP y
+- **La administración no enseña nombres de socio.** Camar devuelve el id del usuario en las
+  reservas pero no su nombre, así que en esa pantalla se ve el principio del identificador y
+  poco más. Se arreglaría en el servidor, no aquí.
+- **No hay tests de interfaz.** Los 87 tests cubren los modelos de pantalla, el cliente HTTP y
   el formateo; las pantallas en sí no se prueban.
 - **No hay target de iOS.** Compose Multiplatform lo soporta, pero no tengo Mac.
 - **Solo habla español.** El formateo de fechas está escrito a mano porque el formateo por

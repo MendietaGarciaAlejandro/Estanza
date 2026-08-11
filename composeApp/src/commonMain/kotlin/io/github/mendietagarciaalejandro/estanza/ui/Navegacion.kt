@@ -12,6 +12,9 @@ import io.github.mendietagarciaalejandro.estanza.datos.CampoDeAlta
 import io.github.mendietagarciaalejandro.estanza.datos.CatalogoDeRecursos
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.ModeloDeAcceso
+import io.github.mendietagarciaalejandro.estanza.ui.admin.AccionesDeAdmin
+import io.github.mendietagarciaalejandro.estanza.ui.admin.ModeloDeAdmin
+import io.github.mendietagarciaalejandro.estanza.ui.admin.PantallaDeAdmin
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.PantallaDeAcceso
 import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.alta.PantallaDeAlta
@@ -47,10 +50,12 @@ fun Navegacion() {
     // la composicion, y con el se llevaria por delante la corrutina que vacia el catalogo.
     val alcance = rememberCoroutineScope()
 
-    if (sesion == null) {
+    val abierta = sesion
+    if (abierta == null) {
         GrafoDeFuera()
     } else {
         GrafoDeDentro(
+            esAdministrador = abierta.esAdministrador,
             alSalir = {
                 // Que el siguiente que entre no se encuentre el catalogo del anterior.
                 alcance.launch { catalogo.olvidar() }
@@ -105,7 +110,7 @@ private fun GrafoDeFuera() {
 }
 
 @Composable
-private fun GrafoDeDentro(alSalir: () -> Unit) {
+private fun GrafoDeDentro(esAdministrador: Boolean, alSalir: () -> Unit) {
     val navegador = rememberNavController()
 
     NavHost(navController = navegador, startDestination = Rutas.Catalogo) {
@@ -119,8 +124,39 @@ private fun GrafoDeDentro(alSalir: () -> Unit) {
                 alAbrirRecurso = { navegador.navigate(Rutas.Recurso(it.id)) },
                 alReintentar = { modelo.cargar(refrescar = true) },
                 alIrAMisReservas = { navegador.navigate(Rutas.MisReservas) },
+                // El rol viene del token que emitio Camar, no de nada que decida el
+                // cliente. Esconder el boton es comodidad; la puerta la guarda el servidor.
+                alIrAAdministracion = if (esAdministrador) {
+                    { navegador.navigate(Rutas.Administracion) }
+                } else {
+                    null
+                },
                 alIrAAjustes = { navegador.navigate(Rutas.Ajustes) },
                 alSalir = alSalir,
+            )
+        }
+
+        composable<Rutas.Administracion> {
+            val modelo = koinViewModel<ModeloDeAdmin>()
+            val estado by modelo.estado.collectAsStateWithLifecycle()
+
+            PantallaDeAdmin(
+                estado = estado,
+                alCambiarSeccion = modelo::verSeccion,
+                acciones = AccionesDeAdmin(
+                    alEscribirMotivo = modelo::escribirMotivo,
+                    alDiaAnterior = modelo::diaAnterior,
+                    alDiaSiguiente = modelo::diaSiguiente,
+                    alBloquear = modelo::bloquearDia,
+                    alDesbloquear = modelo::desbloquearDia,
+                    alEscribirNombre = { texto -> modelo.editarFormulario { copy(nombre = texto) } },
+                    alElegirTipo = { tipo -> modelo.editarFormulario { copy(tipo = tipo) } },
+                    alEscribirCapacidad = { texto -> modelo.editarFormulario { copy(capacidad = texto) } },
+                    alCrearRecurso = modelo::crearRecurso,
+                    alDarDeBaja = modelo::darDeBaja,
+                    alFiltrarReservas = modelo::filtrarReservasPor,
+                ),
+                alVolver = navegador::popBackStack,
             )
         }
 

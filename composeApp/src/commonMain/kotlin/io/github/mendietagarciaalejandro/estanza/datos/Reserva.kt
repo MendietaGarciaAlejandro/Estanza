@@ -30,6 +30,7 @@ enum class EstadoDeReserva(val etiqueta: String) {
 data class Reserva(
     val id: String,
     val idRecurso: String,
+    val idUsuario: String,
     val inicio: Instant,
     val fin: Instant,
     val estado: EstadoDeReserva,
@@ -42,11 +43,18 @@ data class Reserva(
 
     /** Solo se puede cancelar lo que sigue en pie. */
     val sePuedeCancelar: Boolean get() = estado == EstadoDeReserva.Confirmada
+
+    /**
+     * Camar no devuelve el nombre del socio en las reservas, solo su id, asi que en
+     * administracion lo mas util que se puede enseñar es el principio del identificador.
+     */
+    val socioEnCorto: String get() = idUsuario.take(8)
 }
 
 fun ReservaDto.aReserva() = Reserva(
     id = id,
     idRecurso = idRecurso,
+    idUsuario = idUsuario,
     inicio = Instant.parse(inicio),
     fin = Instant.parse(fin),
     estado = EstadoDeReserva.desde(estado),

@@ -8,6 +8,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -93,6 +94,46 @@ class ApiDeCamar(
     suspend fun cancelarReserva(id: String): Respuesta<ReservaDto> =
         pedir { post(url("/api/reservations/$id/cancel")) { autenticar() } }
 
+    // --- administracion ---
+    //
+    // Todo esto lo protege el servidor con [Authorize(Roles = "Admin")]. Que la aplicacion
+    // esconda el boton a los socios es comodidad, no seguridad: si alguien llama a mano con
+    // un token de socio, Camar contesta 403 y aqui llega como ErrorDeApi.Prohibido.
+
+    suspend fun todasLasReservas(idRecurso: String? = null): Respuesta<List<ReservaDto>> =
+        pedir {
+            get(url("/api/admin/reservations")) {
+                if (idRecurso != null) parameter("resourceId", idRecurso)
+                autenticar()
+            }
+        }
+
+    suspend fun diasBloqueados(): Respuesta<List<DiaBloqueadoDto>> =
+        pedir { get(url("/api/admin/blocked-days")) { autenticar() } }
+
+    suspend fun bloquearDia(fecha: LocalDate, motivo: String): Respuesta<DiaBloqueadoDto> =
+        pedir {
+            post(url("/api/admin/blocked-days")) {
+                autenticar()
+                cuerpo(PeticionDeDiaBloqueado(fecha.comoParametro(), motivo))
+            }
+        }
+
+    suspend fun desbloquearDia(id: String): Respuesta<Unit> =
+        pedirVacio { delete(url("/api/admin/blocked-days/$id")) { autenticar() } }
+
+    suspend fun crearRecurso(nombre: String, tipo: Int, capacidad: Int): Respuesta<RecursoDto> =
+        pedir {
+            post(url("/api/admin/resources")) {
+                autenticar()
+                cuerpo(PeticionDeRecurso(nombre, tipo, capacidad))
+            }
+        }
+
+    /** Baja logica: el recurso deja de poder reservarse pero conserva su historial. */
+    suspend fun darDeBajaRecurso(id: String): Respuesta<Unit> =
+        pedirVacio { delete(url("/api/admin/resources/$id")) { autenticar() } }
+
     private fun url(ruta: String) = ajustes.urlBase.value + ruta
 
     private fun HttpRequestBuilder.cuerpo(valor: Any) {
@@ -115,6 +156,25 @@ class ApiDeCamar(
         idUsuario = respuesta.idUsuario,
         rol = respuesta.rol,
     )
+
+    /**
+     * Para los DELETE, que contestan 204 sin cuerpo.
+     *
+     * No se puede usar [pedir] con Unit: al no haber nada que deserializar, Ktor lanza
+     * NoTransformationFoundException y un borrado correcto acabaria contado como fallo.
+     */
+    private suspend fun pedirVacio(peticion: suspend HttpClient.() -> HttpResponse): Respuesta<Unit> {
+        val respuesta = try {
+            cliente.peticion()
+        } catch (cancelacion: CancellationException) {
+            throw cancelacion
+        } catch (fallo: Exception) {
+            return Respuesta.Fallo(ErrorDeApi.SinConexion(fallo.message))
+        }
+
+        return if (respuesta.status.isSuccess()) Respuesta.Exito(Unit)
+        else Respuesta.Fallo(traducir(respuesta))
+    }
 
     private suspend inline fun <reified T> pedir(
         crossinline peticion: suspend HttpClient.() -> HttpResponse,

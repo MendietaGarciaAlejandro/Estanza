@@ -26,6 +26,13 @@ object Rutas {
     @Serializable
     data object MisReservas
 
+    /**
+     * Solo se llega desde el boton que ve un administrador, pero quien manda es el
+     * servidor: si entra un socio, Camar contesta 403 y la pantalla lo enseña.
+     */
+    @Serializable
+    data object Administracion
+
     @Serializable
     data object Ajustes
 }

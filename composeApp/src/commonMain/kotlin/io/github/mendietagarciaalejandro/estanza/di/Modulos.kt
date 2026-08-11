@@ -7,6 +7,7 @@ import io.github.mendietagarciaalejandro.estanza.red.ApiDeCamar
 import io.github.mendietagarciaalejandro.estanza.red.crearClienteHttp
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.ModeloDeAcceso
+import io.github.mendietagarciaalejandro.estanza.ui.admin.ModeloDeAdmin
 import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.catalogo.ModeloDeCatalogo
 import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
@@ -45,6 +46,7 @@ val moduloComun = module {
     viewModelOf(::ModeloDeAlta)
     viewModelOf(::ModeloDeCatalogo)
     viewModelOf(::ModeloDeReservas)
+    viewModelOf(::ModeloDeAdmin)
 
     // Este necesita el id del recurso, que solo se sabe al navegar.
     viewModel { parametros -> ModeloDeRecurso(parametros.get(), get(), get(), get()) }
