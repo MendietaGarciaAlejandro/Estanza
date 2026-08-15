@@ -24,7 +24,7 @@ acuerdo en cosas que nadie había escrito en ningún sitio.
 
 Necesita un Camar corriendo. Por defecto apunta a `http://localhost:5106`, salvo en Android,
 donde apunta a `http://10.0.2.2:5106` porque es así como el emulador ve el localhost del PC.
-Si usas un móvil de verdad hay que cambiarlo, y para eso está la pantalla de conexión.
+Si usas un móvil de verdad hay que cambiarlo, y para eso está la pantalla de ajustes.
 
 ```
 ./gradlew :composeApp:run                              # escritorio
@@ -32,6 +32,11 @@ Si usas un móvil de verdad hay que cambiarlo, y para eso está la pantalla de c
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun      # navegador
 ./gradlew :composeApp:jvmTest                          # tests
 ```
+
+Para escritorio hay que usar `run` y no la recarga en caliente que trae Compose 1.11: esa
+va por la tarea `hotRunJvm` y exige un JetBrains Runtime 21. El JBR que trae Android Studio
+es más nuevo, y un JDK normal de la 21 no le vale, así que si no tienes un JBR 21 instalado
+aparte, la tarea falla antes de arrancar.
 
 Para la versión web, el servidor de desarrollo abre en el 8080 o en el 8081 según cuál esté
 libre, y **Camar tiene que permitir ese origen** en `Cors:OrigenesPermitidos`. Si no, el
@@ -48,8 +53,12 @@ libres de cada día, reservar un rato y cancelarlo.
 
 Con una cuenta de administración aparece además una pantalla para cerrar días sueltos
 (festivos, obras), dar de alta y de baja recursos, y ver las reservas de todo el coworking.
-El botón solo se pinta si el rol del token lo es, pero eso es comodidad: quien guarda la
+El apartado solo se pinta si el rol del token lo es, pero eso es comodidad: quien guarda la
 puerta es Camar, que contesta 403 a cualquier otro.
+
+La interfaz se coloca según el sitio que haya: barra abajo en un móvil, rail lateral en una
+ventana de escritorio o en el navegador, y el catálogo en una columna o en cuatro según
+quepa. No hay una versión por plataforma, es la misma midiendo el ancho.
 
 ## Decisiones que me parecen las importantes
 
@@ -131,6 +140,36 @@ acordarse de limpiar la pila en dos sitios, y además cuando el token caduca sol
 única fuente de verdad: se abre sesión y entras, se cierra —a mano, o porque un 401 la
 tiró— y sales, sin pila que arrastre pantallas de la sesión anterior.
 
+### La misma aplicación, dos formas de moverse por ella
+
+Dentro del grafo de sesión, la navegación vive en un armazón que mide el ancho disponible:
+por debajo de 700 dp pone una barra abajo, que es donde llega el pulgar en un móvil, y por
+encima un rail a la izquierda, que es lo que se espera en una ventana grande. El catálogo va
+en una rejilla que se reparte sola según lo que quepa.
+
+El ancho lo mide un `BoxWithConstraints` y no las clases de tamaño de ventana de Material:
+esa librería todavía va por versiones alpha para multiplataforma, y para elegir entre dos
+disposiciones basta con mirar cuántos dp hay.
+
+Cerrar sesión se fue a ajustes en vez de quedarse en la barra. Es una acción de una vez cada
+mucho, y tenerla siempre a un toque de distancia solo servía para pulsarla sin querer.
+
+### El estilo no es el de Material por defecto
+
+Paleta terracota y oliva, redondeos generosos y una escala de texto propia, con la estructura
+de listas agrupadas: un bloque blanco sobre fondo cálido con separadores finos por dentro, en
+vez de una tarjeta con borde por cada elemento. Cada tipo de espacio tiene su color, para
+distinguir una sala de una mesa sin leer la etiqueta.
+
+No se empaqueta ninguna fuente: se usa la del sistema, que en cada plataforma es la que el
+usuario espera. Daría más carácter, pero engorda la descarga de la versión web y no
+compensaba.
+
+La ficha de un espacio enseñaba antes los huecos como "08:00 - 08:30", y una jornada entera
+eran veintiséis fichas con la misma pinta: imposible de recorrer con la vista. Ahora van
+separados en mañana y tarde y con la hora de empiece nada más, que se leen como un horario,
+que es lo que son. El rango completo se dice abajo al elegir.
+
 ### La pantalla de reservar tuvo que cambiar por una regla del servidor
 
 Empecé pensando en huecos de media hora pulsables de uno en uno. No sirve: una mesa flexible
@@ -175,6 +214,36 @@ Seis tests de los modelos fallaban y cada arreglo destapaba el siguiente:
 
 Los tres están comentados donde tocan, porque son de los que se olvidan y se vuelven a sufrir.
 
+Más tarde apareció el cuarto, y es el que más me costó ver: **esperar a que un indicador de
+"cargando" se apague es una carrera**. Si la respuesta llega antes de que el test se suscriba
+al flujo, la espera no ve nunca el cambio y se queda colgada hasta que salta el límite de
+tiempo. Los tests que lo hacían ahora esperan a un dato que solo puede venir de la respuesta
+que les interesa. Uno de ellos, además, nunca probó lo que decía: el envoltorio del entorno
+de prueba interceptaba la petición antes de llegar a la respuesta que yo había preparado.
+
+## Y tres más del rediseño de la interfaz
+
+**Nadie pintaba el fondo.** Antes cada pantalla era un `Surface` que lo pintaba; al
+reestructurar la navegación los quité y no puse nada en su lugar. Con el sistema en oscuro
+salía el tema oscuro dibujado encima del fondo blanco del HTML: cajas de texto negras sobre
+blanco. Ahora hay un `Surface` en la raíz, y el `index.html` responde a
+`prefers-color-scheme` para que no haya un parpadeo blanco al arrancar.
+
+**`fillMaxWidth().widthIn(max = 460.dp)` no recorta nada.** `fillMaxWidth` deja la anchura
+fijada a la del padre y el `widthIn` de detrás ya no puede hacer nada contra un mínimo que
+ya vale lo mismo que el máximo. Va al revés: primero el tope, después rellenar hasta él. El
+código parece correcto y por eso cuesta verlo.
+
+**Los modelos de las pestañas sobreviven entre visitas.** Con `saveState` y `restoreState`,
+cada apartado recuerda por dónde ibas — y de paso mantiene vivo su modelo. Los de reservas y
+catálogo solo cargaban en su `init`, así que hacías una reserva, volvías a la pestaña y
+seguía diciendo que no habías reservado nada. Ahora recargan al entrar, cancelando la
+consulta anterior para que dos cargas solapadas no se pisen.
+
+Ese último lo encontré usando la aplicación, no con los tests, y es el que más me gusta de
+los tres: es exactamente el tipo de fallo que aparece cuando cambias la forma de navegar y
+no repasas quién sobrevive a qué.
+
 ## Limitaciones conocidas
 
 - **El token se guarda sin cifrar.** Va a las mismas preferencias que la dirección del
@@ -190,8 +259,14 @@ Los tres están comentados donde tocan, porque son de los que se olvidan y se vu
 - **La administración no enseña nombres de socio.** Camar devuelve el id del usuario en las
   reservas pero no su nombre, así que en esa pantalla se ve el principio del identificador y
   poco más. Se arreglaría en el servidor, no aquí.
+- **La versión web pesa mucho.** Ya optimizada son unos 13,5 MB de descarga: 4,7 del código
+  de la aplicación, 8,3 de Skiko —el motor gráfico de Compose, que va aparte y no se puede
+  adelgazar desde aquí— y medio mega de JavaScript. Es el punto flojo de Compose en el
+  navegador y no tiene arreglo por mi parte; para una aplicación pública de verdad habría
+  que plantearse otra cosa para la web.
 - **No hay tests de interfaz.** Los 87 tests cubren los modelos de pantalla, el cliente HTTP y
-  el formateo; las pantallas en sí no se prueban.
+  el formateo; las pantallas en sí no se prueban. Los dos fallos de disposición del rediseño
+  no los habría cazado ningún test de los que hay, y por eso están contados arriba.
 - **No hay target de iOS.** Compose Multiplatform lo soporta, pero no tengo Mac.
 - **Solo habla español.** El formateo de fechas está escrito a mano porque el formateo por
   locale no funciona igual en las tres plataformas, y arrastrar una librería de
