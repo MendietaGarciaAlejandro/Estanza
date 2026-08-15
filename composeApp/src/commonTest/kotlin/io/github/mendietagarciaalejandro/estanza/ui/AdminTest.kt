@@ -57,16 +57,18 @@ class AdminTest {
     private suspend fun <T> StateFlow<T>.esperar(condicion: (T) -> Boolean): T = first(condicion)
 
     /**
-     * Espera a una carga entera, de que empieza a que termina.
+     * Una reserva por cada recurso que se pida, para poder distinguir una respuesta de otra.
      *
-     * Esperar solo a !cargando no vale: el launch del modelo no se ejecuta en el acto, asi
-     * que en ese momento cargando todavia es false por la carga anterior y la espera vuelve
-     * enseguida, antes de que salga la peticion. Al arrancar si funciona porque el estado
-     * inicial ya es cargando = true.
+     * Los tests esperan al resultado y no al indicador de "cargando": ese va y viene, y si
+     * la peticion termina antes de que el test se suscriba al flujo, la espera no ve nunca
+     * el cambio y se queda colgada. Esperar a un dato que solo puede venir de la respuesta
+     * que interesa no tiene ese problema.
      */
-    private suspend fun ModeloDeAdmin.esperarCarga() {
-        estado.esperar { it.cargando }
-        estado.esperar { !it.cargando }
+    private fun reservasDe(cuantas: Int) = (1..cuantas).joinToString(",", "[", "]") { n ->
+        """{"id":"r$n","resourceId":"1","userId":"u1",""" +
+            """"start":"2026-01-12T0$n:00:00+00:00","end":"2026-01-12T0$n:30:00+00:00",""" +
+            """"status":"Confirmed","price":18.00,"createdAt":"2026-01-11T10:00:00+00:00",""" +
+            """"cancelledAt":null,"refundAmount":null}"""
     }
 
     private fun HttpRequestData.es(metodo: HttpMethod, ruta: String) =
@@ -98,7 +100,7 @@ class AdminTest {
 
     @Test
     fun lasReservasDelCoworkingNoSePidenHastaQueSeMiranEsaPestaña() = runTest(dispatcher) {
-        val entorno = entornoDeAdmin { json("[]") }
+        val entorno = entornoDeAdmin { json(reservasDe(2)) }
         val modelo = ModeloDeAdmin(entorno.api, CatalogoDeRecursos(entorno.api), entorno.reloj)
         modelo.estado.esperar { !it.cargando }
 
@@ -106,7 +108,7 @@ class AdminTest {
         assertTrue(entorno.peticiones.none { it.url.encodedPath == "/api/admin/reservations" })
 
         modelo.verSeccion(SeccionDeAdmin.Reservas)
-        modelo.esperarCarga()
+        modelo.estado.esperar { it.reservas.size == 2 }
 
         assertTrue(entorno.peticiones.any { it.url.encodedPath == "/api/admin/reservations" })
     }
@@ -261,46 +263,63 @@ class AdminTest {
 
     @Test
     fun darDeBaja_vaciaElCatalogoQueTienenLasOtrasPantallas() = runTest(dispatcher) {
-        val entorno = entornoDeAdmin { peticion ->
-            if (peticion.method == HttpMethod.Delete) respond("", HttpStatusCode.NoContent)
-            else json("[]")
+        // La segunda vez que se pida el catalogo ya no estara el recurso: es una baja
+        // logica, deja de aparecer entre los activos. Esperar a ver la lista vacia es la
+        // prueba de que se volvio a preguntar de verdad.
+        // Sin entornoDeAdmin: ese ya responde el catalogo por su cuenta y no dejaria
+        // llegar aqui la segunda respuesta.
+        var vecesQueSePidioElCatalogo = 0
+        val entorno = EntornoDePrueba { peticion ->
+            when {
+                peticion.method == HttpMethod.Delete -> respond("", HttpStatusCode.NoContent)
+                peticion.es(HttpMethod.Get, "/api/resources") -> {
+                    vecesQueSePidioElCatalogo++
+                    if (vecesQueSePidioElCatalogo == 1) json(recursosJson) else json("[]")
+                }
+                peticion.es(HttpMethod.Get, "/api/admin/blocked-days") -> json(diasJson)
+                else -> json("[]")
+            }
         }
 
         val catalogo = CatalogoDeRecursos(entorno.api)
         val modelo = ModeloDeAdmin(entorno.api, catalogo, entorno.reloj)
-        val estado = modelo.estado.esperar { !it.cargando }
-        val consultasAntes = entorno.peticiones.count { it.url.encodedPath == "/api/resources" }
+        val estado = modelo.estado.esperar { it.recursos.isNotEmpty() }
 
         modelo.darDeBaja(estado.recursos.first())
-        modelo.estado.esperar { !it.trabajando && it.aviso != null }
-        modelo.esperarCarga()
 
-        // Si no se vaciara, el catalogo seguiria enseñando un recurso que ya no se puede
-        // reservar hasta que alguien cerrara sesion.
-        assertTrue(
-            entorno.peticiones.count { it.url.encodedPath == "/api/resources" } > consultasAntes
-        )
+        // Si no se vaciara el catalogo guardado, las otras pantallas seguirian enseñando un
+        // recurso que ya no se puede reservar hasta que alguien cerrara sesion.
+        modelo.estado.esperar { it.recursos.isEmpty() }
+        assertEquals(2, vecesQueSePidioElCatalogo)
     }
 
     // --- reservas del coworking ---
 
     @Test
     fun elFiltroPorRecursoViajaEnLaUrl() = runTest(dispatcher) {
-        val entorno = entornoDeAdmin { json("[]") }
+        // Sin filtro contesta dos reservas y con filtro una sola, para poder saber por la
+        // lista cual de las dos respuestas es la que ha llegado.
+        val entorno = entornoDeAdmin { peticion ->
+            if (peticion.url.parameters["resourceId"] == null) json(reservasDe(2)) else json(reservasDe(1))
+        }
         val modelo = ModeloDeAdmin(entorno.api, CatalogoDeRecursos(entorno.api), entorno.reloj)
         modelo.estado.esperar { !it.cargando }
 
         modelo.verSeccion(SeccionDeAdmin.Reservas)
-        modelo.esperarCarga()
-        modelo.filtrarReservasPor("1")
-        modelo.esperarCarga()
+        modelo.estado.esperar { it.reservas.size == 2 }
 
-        val ultima = entorno.peticiones.last { it.url.encodedPath == "/api/admin/reservations" }
-        assertEquals("1", ultima.url.parameters["resourceId"])
+        modelo.filtrarReservasPor("1")
+        modelo.estado.esperar { it.reservas.size == 1 }
+
+        assertEquals(
+            "1",
+            entorno.peticiones.last { it.url.encodedPath == "/api/admin/reservations" }
+                .url.parameters["resourceId"],
+        )
 
         // Volver a pulsar el mismo filtro lo quita, igual que en el catalogo.
         modelo.filtrarReservasPor("1")
-        modelo.esperarCarga()
+        modelo.estado.esperar { it.reservas.size == 2 }
 
         assertNull(
             entorno.peticiones.last { it.url.encodedPath == "/api/admin/reservations" }

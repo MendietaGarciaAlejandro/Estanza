@@ -11,7 +11,15 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #FBF1EB;
+            /* El mismo fondo que pinta el tema en Kotlin. Solo se ve el instante que tarda
+               en arrancar el wasm, pero si no coincide se nota un parpadeo blanco. */
+            background-color: #F5F1ED;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            html, body {
+                background-color: #121110;
+            }
         }
     </style>
 </head>

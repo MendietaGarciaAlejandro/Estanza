@@ -7,6 +7,7 @@ import io.github.mendietagarciaalejandro.estanza.datos.Reserva
 import io.github.mendietagarciaalejandro.estanza.datos.aReserva
 import io.github.mendietagarciaalejandro.estanza.red.ApiDeCamar
 import io.github.mendietagarciaalejandro.estanza.red.Respuesta
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,12 +33,20 @@ class ModeloDeReservas(
     private val flujo = MutableStateFlow(EstadoDeReservas())
     val estado: StateFlow<EstadoDeReservas> = flujo.asStateFlow()
 
+    private var consulta: Job? = null
+
     init {
         cargar()
     }
 
+    /**
+     * Se llama al crear el modelo y cada vez que se vuelve a la pestaña, asi que puede
+     * haber una carga en marcha; la anterior ya no interesa.
+     */
     fun cargar() {
-        viewModelScope.launch {
+        consulta?.cancel()
+
+        consulta = viewModelScope.launch {
             flujo.value = flujo.value.copy(cargando = true, error = null)
 
             // El catalogo suele estar ya en memoria, asi que esto no gasta otra peticion.

@@ -1,6 +1,7 @@
 package io.github.mendietagarciaalejandro.estanza.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -11,17 +12,18 @@ import androidx.navigation.toRoute
 import io.github.mendietagarciaalejandro.estanza.datos.CampoDeAlta
 import io.github.mendietagarciaalejandro.estanza.datos.CatalogoDeRecursos
 import io.github.mendietagarciaalejandro.estanza.sesion.AlmacenDeSesion
+import io.github.mendietagarciaalejandro.estanza.sesion.Sesion
 import io.github.mendietagarciaalejandro.estanza.ui.acceso.ModeloDeAcceso
+import io.github.mendietagarciaalejandro.estanza.ui.acceso.PantallaDeAcceso
 import io.github.mendietagarciaalejandro.estanza.ui.admin.AccionesDeAdmin
 import io.github.mendietagarciaalejandro.estanza.ui.admin.ModeloDeAdmin
 import io.github.mendietagarciaalejandro.estanza.ui.admin.PantallaDeAdmin
-import io.github.mendietagarciaalejandro.estanza.ui.acceso.PantallaDeAcceso
 import io.github.mendietagarciaalejandro.estanza.ui.alta.ModeloDeAlta
 import io.github.mendietagarciaalejandro.estanza.ui.alta.PantallaDeAlta
-import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
-import io.github.mendietagarciaalejandro.estanza.ui.conexion.PantallaDeConexion
 import io.github.mendietagarciaalejandro.estanza.ui.catalogo.ModeloDeCatalogo
 import io.github.mendietagarciaalejandro.estanza.ui.catalogo.PantallaDeCatalogo
+import io.github.mendietagarciaalejandro.estanza.ui.conexion.ModeloDeConexion
+import io.github.mendietagarciaalejandro.estanza.ui.conexion.PantallaDeAjustes
 import io.github.mendietagarciaalejandro.estanza.ui.recurso.ModeloDeRecurso
 import io.github.mendietagarciaalejandro.estanza.ui.recurso.PantallaDeRecurso
 import io.github.mendietagarciaalejandro.estanza.ui.reservas.ModeloDeReservas
@@ -55,16 +57,20 @@ fun Navegacion() {
         GrafoDeFuera()
     } else {
         GrafoDeDentro(
-            esAdministrador = abierta.esAdministrador,
+            sesion = abierta,
             alSalir = {
                 // Que el siguiente que entre no se encuentre el catalogo del anterior.
                 alcance.launch { catalogo.olvidar() }
                 sesiones.cerrar()
-            }
+            },
         )
     }
 }
 
+/**
+ * Antes de entrar no hay barra de navegacion: solo hay dos sitios donde ir y una pantalla de
+ * ajustes a la que se llega desde el acceso.
+ */
 @Composable
 private fun GrafoDeFuera() {
     val navegador = rememberNavController()
@@ -104,113 +110,131 @@ private fun GrafoDeFuera() {
         }
 
         composable<Rutas.Ajustes> {
-            Ajustes(alVolver = navegador::popBackStack)
+            Ajustes(sesion = null, alSalir = null, alVolver = navegador::popBackStack)
         }
     }
 }
 
+/**
+ * Ya dentro, la navegacion vive en el armazon: barra abajo en un movil y rail al lado en
+ * escritorio y navegador.
+ */
 @Composable
-private fun GrafoDeDentro(esAdministrador: Boolean, alSalir: () -> Unit) {
+private fun GrafoDeDentro(sesion: Sesion, alSalir: () -> Unit) {
     val navegador = rememberNavController()
 
-    NavHost(navController = navegador, startDestination = Rutas.Catalogo) {
-        composable<Rutas.Catalogo> {
-            val modelo = koinViewModel<ModeloDeCatalogo>()
-            val estado by modelo.estado.collectAsStateWithLifecycle()
+    ArmazonAdaptativo(
+        navegador = navegador,
+        apartados = apartadosDeDentro(sesion.esAdministrador),
+    ) { margenes ->
+        NavHost(
+            navController = navegador,
+            startDestination = Rutas.Catalogo,
+            modifier = margenes,
+        ) {
+            composable<Rutas.Catalogo> {
+                val modelo = koinViewModel<ModeloDeCatalogo>()
+                val estado by modelo.estado.collectAsStateWithLifecycle()
 
-            PantallaDeCatalogo(
-                estado = estado,
-                alFiltrar = modelo::filtrarPor,
-                alAbrirRecurso = { navegador.navigate(Rutas.Recurso(it.id)) },
-                alReintentar = { modelo.cargar(refrescar = true) },
-                alIrAMisReservas = { navegador.navigate(Rutas.MisReservas) },
-                // El rol viene del token que emitio Camar, no de nada que decida el
-                // cliente. Esconder el boton es comodidad; la puerta la guarda el servidor.
-                alIrAAdministracion = if (esAdministrador) {
-                    { navegador.navigate(Rutas.Administracion) }
-                } else {
-                    null
-                },
-                alIrAAjustes = { navegador.navigate(Rutas.Ajustes) },
-                alSalir = alSalir,
-            )
-        }
 
-        composable<Rutas.Administracion> {
-            val modelo = koinViewModel<ModeloDeAdmin>()
-            val estado by modelo.estado.collectAsStateWithLifecycle()
+                // Igual que en reservas: si el administrador da de alta un espacio, esta
+                // pantalla tiene que enterarse al volver. Sin refrescar, que la lista la
+                // guarda CatalogoDeRecursos y solo sale a la red si se ha vaciado.
+                LaunchedEffect(Unit) { modelo.cargar() }
 
-            PantallaDeAdmin(
-                estado = estado,
-                alCambiarSeccion = modelo::verSeccion,
-                acciones = AccionesDeAdmin(
-                    alEscribirMotivo = modelo::escribirMotivo,
+                PantallaDeCatalogo(
+                    estado = estado,
+                    alFiltrar = modelo::filtrarPor,
+                    alAbrirRecurso = { navegador.navigate(Rutas.Recurso(it.id)) },
+                    alReintentar = { modelo.cargar(refrescar = true) },
+                )
+            }
+
+            composable<Rutas.Recurso> { entrada ->
+                val ruta = entrada.toRoute<Rutas.Recurso>()
+
+                // La clave hace que al abrir otro recurso se cree un modelo nuevo en vez de
+                // reutilizar el del anterior con su fecha y sus huecos.
+                val modelo = koinViewModel<ModeloDeRecurso>(key = ruta.id) { parametersOf(ruta.id) }
+                val estado by modelo.estado.collectAsStateWithLifecycle()
+
+                PantallaDeRecurso(
+                    estado = estado,
                     alDiaAnterior = modelo::diaAnterior,
                     alDiaSiguiente = modelo::diaSiguiente,
-                    alBloquear = modelo::bloquearDia,
-                    alDesbloquear = modelo::desbloquearDia,
-                    alEscribirNombre = { texto -> modelo.editarFormulario { copy(nombre = texto) } },
-                    alElegirTipo = { tipo -> modelo.editarFormulario { copy(tipo = tipo) } },
-                    alEscribirCapacidad = { texto -> modelo.editarFormulario { copy(capacidad = texto) } },
-                    alCrearRecurso = modelo::crearRecurso,
-                    alDarDeBaja = modelo::darDeBaja,
-                    alFiltrarReservas = modelo::filtrarReservasPor,
-                ),
-                alVolver = navegador::popBackStack,
-            )
-        }
+                    alPulsarHueco = modelo::pulsarHueco,
+                    alReservar = modelo::reservar,
+                    alReintentar = modelo::reintentar,
+                    alVolver = navegador::popBackStack,
+                )
+            }
 
-        composable<Rutas.MisReservas> {
-            val modelo = koinViewModel<ModeloDeReservas>()
-            val estado by modelo.estado.collectAsStateWithLifecycle()
+            composable<Rutas.MisReservas> {
+                val modelo = koinViewModel<ModeloDeReservas>()
+                val estado by modelo.estado.collectAsStateWithLifecycle()
 
-            PantallaDeReservas(
-                estado = estado,
-                alPedirCancelar = modelo::preguntarSiCancelar,
-                alConfirmarCancelacion = modelo::confirmarCancelacion,
-                alDejarloEstar = modelo::dejarloEstar,
-                alReintentar = modelo::cargar,
-                alVolver = navegador::popBackStack,
-            )
-        }
 
-        composable<Rutas.Recurso> { entrada ->
-            val ruta = entrada.toRoute<Rutas.Recurso>()
+                // El modelo sobrevive a cambiar de pestaña (saveState/restoreState), asi que
+                // sin esto la lista se queda como estaba la primera vez que se abrio: haces
+                // una reserva y al volver aqui sigue diciendo que no has reservado nada.
+                LaunchedEffect(Unit) { modelo.cargar() }
 
-            // La clave hace que al abrir otro recurso se cree un modelo nuevo en vez de
-            // reutilizar el del anterior con su fecha y sus huecos.
-            val modelo = koinViewModel<ModeloDeRecurso>(key = ruta.id) { parametersOf(ruta.id) }
-            val estado by modelo.estado.collectAsStateWithLifecycle()
+                PantallaDeReservas(
+                    estado = estado,
+                    alPedirCancelar = modelo::preguntarSiCancelar,
+                    alConfirmarCancelacion = modelo::confirmarCancelacion,
+                    alDejarloEstar = modelo::dejarloEstar,
+                    alReintentar = modelo::cargar,
+                )
+            }
 
-            PantallaDeRecurso(
-                estado = estado,
-                alDiaAnterior = modelo::diaAnterior,
-                alDiaSiguiente = modelo::diaSiguiente,
-                alPulsarHueco = modelo::pulsarHueco,
-                alReservar = modelo::reservar,
-                alReintentar = modelo::reintentar,
-                alVolver = navegador::popBackStack,
-            )
-        }
+            composable<Rutas.Administracion> {
+                val modelo = koinViewModel<ModeloDeAdmin>()
+                val estado by modelo.estado.collectAsStateWithLifecycle()
 
-        composable<Rutas.Ajustes> {
-            Ajustes(alVolver = navegador::popBackStack)
+
+                LaunchedEffect(Unit) { modelo.cargar() }
+
+                PantallaDeAdmin(
+                    estado = estado,
+                    alCambiarSeccion = modelo::verSeccion,
+                    acciones = AccionesDeAdmin(
+                        alEscribirMotivo = modelo::escribirMotivo,
+                        alDiaAnterior = modelo::diaAnterior,
+                        alDiaSiguiente = modelo::diaSiguiente,
+                        alBloquear = modelo::bloquearDia,
+                        alDesbloquear = modelo::desbloquearDia,
+                        alEscribirNombre = { texto -> modelo.editarFormulario { copy(nombre = texto) } },
+                        alElegirTipo = { tipo -> modelo.editarFormulario { copy(tipo = tipo) } },
+                        alEscribirCapacidad = { texto -> modelo.editarFormulario { copy(capacidad = texto) } },
+                        alCrearRecurso = modelo::crearRecurso,
+                        alDarDeBaja = modelo::darDeBaja,
+                        alFiltrarReservas = modelo::filtrarReservasPor,
+                    ),
+                )
+            }
+
+            composable<Rutas.Ajustes> {
+                Ajustes(sesion = sesion, alSalir = alSalir, alVolver = null)
+            }
         }
     }
 }
 
-/** La misma pantalla de conexion sirve dentro y fuera, asi que se monta en los dos grafos. */
+/** La misma pantalla de ajustes sirve dentro y fuera; lo que cambia es si hay sesion. */
 @Composable
-private fun Ajustes(alVolver: () -> Unit) {
+private fun Ajustes(sesion: Sesion?, alSalir: (() -> Unit)?, alVolver: (() -> Unit)?) {
     val modelo = koinViewModel<ModeloDeConexion>()
     val estado by modelo.estado.collectAsStateWithLifecycle()
 
-    PantallaDeConexion(
+    PantallaDeAjustes(
         estado = estado,
+        sesion = sesion,
         alEscribir = modelo::escribir,
         alGuardar = modelo::guardar,
         alRestablecer = modelo::restablecer,
         alProbar = modelo::probar,
+        alSalir = alSalir,
         alVolver = alVolver,
     )
 }

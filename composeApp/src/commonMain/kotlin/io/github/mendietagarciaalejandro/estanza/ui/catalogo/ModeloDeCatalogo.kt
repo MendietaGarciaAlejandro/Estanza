@@ -6,6 +6,7 @@ import io.github.mendietagarciaalejandro.estanza.datos.CatalogoDeRecursos
 import io.github.mendietagarciaalejandro.estanza.datos.Recurso
 import io.github.mendietagarciaalejandro.estanza.datos.TipoDeRecurso
 import io.github.mendietagarciaalejandro.estanza.red.Respuesta
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,12 +31,16 @@ class ModeloDeCatalogo(private val catalogo: CatalogoDeRecursos) : ViewModel() {
     private val flujo = MutableStateFlow(EstadoDelCatalogo())
     val estado: StateFlow<EstadoDelCatalogo> = flujo.asStateFlow()
 
+    private var consulta: Job? = null
+
     init {
         cargar()
     }
 
     fun cargar(refrescar: Boolean = false) {
-        viewModelScope.launch {
+        consulta?.cancel()
+
+        consulta = viewModelScope.launch {
             flujo.value = flujo.value.copy(cargando = true, error = null)
 
             flujo.value = when (val respuesta = catalogo.recursos(refrescar)) {

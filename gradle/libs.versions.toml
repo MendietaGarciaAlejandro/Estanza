@@ -26,6 +26,11 @@ validadores = "0.1.0"
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 
+# Los iconos dejaron de publicarse en la 1.7.3 y ahi se quedaron. No pasa nada: un icono de
+# Material no cambia. Se usa el paquete "core" y no el "extended" porque el segundo trae
+# miles de vectores y eso en la version web se nota en lo que pesa la descarga.
+compose-material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
+
 # Los de lifecycle son los de JetBrains, no los de AndroidX: los de AndroidX solo tienen
 # artefacto para Android y aqui hacen falta tambien en escritorio y en el navegador.
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }

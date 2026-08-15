@@ -27,6 +27,9 @@ fun Instant.comoHora(): String {
     return "${hora.hour.aDosCifras()}:${hora.minute.aDosCifras()}"
 }
 
+/** La hora del dia, de 0 a 23, segun el reloj del coworking. Para separar mañana de tarde. */
+fun Instant.horaDeCamar(): Int = toLocalDateTime(ZonaDeLasHorasDeCamar).hour
+
 /** El dia al que pertenece un instante segun el calendario del coworking. */
 fun Instant.fechaDeCamar(): LocalDate = toLocalDateTime(ZonaDeLasHorasDeCamar).date
 
